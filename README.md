@@ -1,6 +1,6 @@
 # About
 
-These templates setup a Grade 1 level production environment for the Spark cluster.
+These templates setup a Grade I-level production environment for the Spark cluster.
 
 Cluster can be used to run ML/HPC/DS workload, to perform rapid calculations on demand, etc
 
@@ -47,8 +47,8 @@ sudo -H gedit /etc/environment
 # Prerequisites: install local Spark environment for testing/debugging
 
 (1) Find the latest stable Spark distributive at [Spark official website](https://spark.apache.org/downloads.html)
-We are going to use Spark 3.2.2 + Scala 2.13 (Note the tie, Spark has a dependency on Scala)
-Note, this should match the version you set in your pom
+We are going to use Spark 3.2.2 + Scala 2.13 (Note the tie Spark<->Scala, this is because Spark has a dependency on Scala)
+Note, this should _match_ the version you set in your pom
 
 In this case we are going to download and use 
 [spark-3.2.2-bin-hadoop3.2-scala2.13.tgz](https://www.apache.org/dyn/closer.lua/spark/spark-3.2.2/spark-3.2.2-bin-hadoop3.2-scala2.13.tgz)
@@ -77,7 +77,7 @@ check the installation:
 /opt/spark/bin/spark-shell --version
 ```
 
-Here one can find all available commands: 
+Here one can find all available commands that you can run locally: 
 
 ```bash
 ls /opt/spark/bin/
@@ -101,7 +101,7 @@ source ~/.bashrc
 mvn clean package
 /opt/spark/bin/spark-submit --class net.ddp.mapreduce.PiComputeApp ./spark-core/target/spark-core-1.0-SNAPSHOT.jar
 ```
-The output should contain the line:
+The output of last command (which actually the one that runs job) should contain the line:
 
 ```bash
 ...
@@ -113,20 +113,25 @@ The output should contain the line:
 
 # Create cloud infrastructure to run Spark workload in the cloud
 
-(1) Build custom image to run Java11 workload
+Default images available to run your jobs may not support the Run Time you need (f.e. Java 11, 17, etc)
+This problem can be solved with the help of _custom images_
+
+(1) To build a custom image to run Java11 workload we start from the following command
+(as written in guide https://cloud.google.com/dataproc/docs/guides/dataproc-images#rest-api)
 
 ```bash
 git clone https://github.com/GoogleCloudDataproc/custom-images
 ```
 
-and then
+and then from the root directory run the script generate_custom_image (choose some existing gcs bucket to hold the image, 
+in our case it's gs://dataproc-cluster-custom-images):
 
 ```bash
 python3 generate_custom_image.py \
     --image-name "custom-debian10-java11" \
     --dataproc-version "2.0-debian10" \
     --disk-size 30 \
-    --customization-script /home/alex/projects/gcp-prod-spark-cluster/terraform/data/custom-image.sh \
+    --customization-script <path to terraform/data/custom-image.sh> \
     --zone "us-central1-a" \
     --gcs-bucket "gs://dataproc-cluster-custom-images" \
     --shutdown-instance-timer-sec 500
@@ -169,13 +174,11 @@ gcloud services enable dataproc
 
 (5) Create infrastructure using Terraform:
 
-For Terraform it's necessary to set in file set_env.sh the following variables:
-
 ```
 export TF_VAR_google_app_creds=$GOOGLE_APPLICATION_CREDENTIALS
 export TF_VAR_project=$GOOGLE_CLOUD_PROJECT
 ```
-(6) Run terraform init to download the latest version of the provider and build the .terraform directory
+(6) Run `terraform init` to download the latest version of the provider and build the `.terraform` directory
 
 ```
 terraform init
@@ -192,6 +195,8 @@ First, compiled uber job has to be uploaded to GCS, as cloud spark cannot run it
 gsutil cp ./spark-core/target/spark-core-1.0-SNAPSHOT.jar gs://dataproc-cluster-0/spark-core-1.0-SNAPSHOT.jar
 ```
 
+and then the final command:
+
 ```bash
 gcloud dataproc jobs submit spark \
     --cluster=dataproc-cluster-0-7f7a78317a21a70a \
@@ -201,14 +206,16 @@ gcloud dataproc jobs submit spark \
     -- 1000
 ```
 
+The job should succeed and show the output similar to we saw earlier
 
+# Appendix I
 
 Remote connection to master node can be done via command:
 
 
 ```bash
-gcloud compute ssh --zone "us-central1-c" "dataproc-cluster-0-7f7a78317a21a70a-m"  --tunnel-through-iap --project "message-multi-processor"
+gcloud compute ssh --zone "us-central1-c" "dataproc-cluster-0-7f7a78317a21a70a-m"  --tunnel-through-iap --project <project name>
 ```
 
 To increase the performance of the tunnel, consider installing NumPy. To install NumPy, see: https://numpy.org/install/.
-After installing NumPy, run the following command to allow gcloud to access  external packages: `export CLOUDSDK_PYTHON_SITEPACKAGES=1`
+After installing NumPy, run the following command to allow `gcloud` to access  external packages: `export CLOUDSDK_PYTHON_SITEPACKAGES=1`

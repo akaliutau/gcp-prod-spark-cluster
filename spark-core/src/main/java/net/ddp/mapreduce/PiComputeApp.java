@@ -67,8 +67,8 @@ public class PiComputeApp implements Serializable {
      * The processing code.
      */
     private void start(int slices) {
-        int numberOfThrows = 100000 * slices;
-        log.info("About to create {} samples", +numberOfThrows);
+        int numberOfSamples = 100000 * slices;
+        log.info("About to create {} samples", +numberOfSamples);
 
         long t0 = System.currentTimeMillis();
         SparkSession spark = SparkSession.builder().appName("Spark Pi").master("local[*]").getOrCreate();
@@ -76,8 +76,8 @@ public class PiComputeApp implements Serializable {
         long t1 = System.currentTimeMillis();
         log.info("Session initialized in {} ms", (t1 - t0));
 
-        List<Integer> l = new ArrayList<>(numberOfThrows);
-        for (int i = 0; i < numberOfThrows; i++) {
+        List<Integer> l = new ArrayList<>(numberOfSamples);
+        for (int i = 0; i < numberOfSamples; i++) {
             l.add(i);
         }
         Dataset<Row> incrementalDf = spark.createDataset(l, Encoders.INT()).toDF();
@@ -90,11 +90,11 @@ public class PiComputeApp implements Serializable {
         long t3 = System.currentTimeMillis();
         log.info("Sampling done in {} ms", (t3 - t2));
 
-        int dartsInCircle = dartsDs.reduce(new SampleReducer());
+        int hitsInCircle = dartsDs.reduce(new SampleReducer());
         long t4 = System.currentTimeMillis();
         log.info("Analyzing result in {} ms", (t4 - t3));
 
-        log.info("Pi is roughly {}", 4.0 * dartsInCircle / numberOfThrows);
+        log.info("Pi is roughly {}", 4.0 * hitsInCircle / numberOfSamples);
 
         spark.stop();
     }
